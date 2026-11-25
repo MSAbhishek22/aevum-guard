@@ -110,6 +110,11 @@
           <p class="step-code"><code>verifyChain</code> → <code>(ok, failedIndex)</code></p>
         </article>
       </div>
+      <figure class="diorama reveal" aria-label="The vault, in three dimensions">
+        <canvas id="diorama-canvas" aria-label="A glass vault cube ringed by three control rings. Scroll to turn it, or drag it."></canvas>
+        <figcaption>The vault, turned by your scroll — drag it too. The three rings are the three controls: limits, session keys, receipts.</figcaption>
+        <noscript><p>The 3D vault needs JavaScript. The rest of this page still works.</p></noscript>
+      </figure>
       <div class="pay-flow reveal" aria-label="What pay() checks, in order">
         <h3>What <code>pay()</code> checks, in order</h3>
         <ol class="flow-list">
@@ -173,6 +178,11 @@
         <div class="guard-result" id="guard-result" role="status" aria-live="polite">
           <p class="guard-result-empty">Run a check to see the guard’s answer.</p>
         </div>
+        <div class="guard-shield" aria-label="Guard verdict, in three dimensions">
+          <canvas id="shield-canvas" aria-label="A holographic shield. Gold while no check has run, green when a payment passes, red when one is blocked. Drag to turn it."></canvas>
+          <p class="guard-shield-caption">The shield answers with the guard: gold while it waits, green for a pass, red for a block.</p>
+          <noscript><p>The 3D shield needs JavaScript. The rest of this page still works.</p></noscript>
+        </div>
       </div>
     </div>
   </section>
@@ -232,6 +242,10 @@
 </main>
 
 <footer class="site-footer">
+  <div class="footer-key">
+    <canvas id="key-canvas" aria-label="A gold key, turning slowly as you scroll."></canvas>
+    <p class="footer-key-caption">The key stays with the owner.</p>
+  </div>
   <div class="wrap footer-inner">
     <p><strong>Aevum Guard</strong> — built solo by <strong>M S Abhishek</strong> for the Aevum Builder Challenge #1 (DoraHacks, $1,500 USDT; submissions close 11 Dec 2026, 13:30 IST). MIT licence.</p>
     <p class="footer-note">Testnet only. tUSD8 has no real value. Nothing on this page is financial advice, and nothing here moves real money.</p>

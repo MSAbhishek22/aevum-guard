@@ -106,6 +106,39 @@ const finePointer = window.matchMedia('(pointer: fine)').matches;
   }));
   world.add(particles);
 
+  /* --- wireframe terrain floor, fading into the fog --- */
+  const terrain = new THREE.Mesh(
+    new THREE.PlaneGeometry(26, 26, 26, 26),
+    new THREE.MeshBasicMaterial({ color: 0x9a7422, wireframe: true, transparent: true, opacity: 0.22 })
+  );
+  terrain.rotation.x = -Math.PI / 2;
+  terrain.position.y = -2.3;
+  world.add(terrain);
+
+  /* --- glass torus ring around the vault --- */
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(1.55, 0.045, 16, 90),
+    new THREE.MeshStandardMaterial({
+      color: 0x9fd8cf, metalness: 0.2, roughness: 0.1,
+      transparent: true, opacity: 0.55, emissive: 0x2a6f66, emissiveIntensity: 0.4,
+    })
+  );
+  halo.rotation.x = Math.PI / 2.6;
+  halo.position.copy(vault.position);
+  world.add(halo);
+
+  /* --- three chrome orbs in orbit around the vault --- */
+  const orbMaterial = new THREE.MeshStandardMaterial({
+    color: 0xf6c95e, metalness: 0.95, roughness: 0.12,
+    emissive: 0xe8b34b, emissiveIntensity: 0.25,
+  });
+  const orbs = [
+    { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.22, 32, 32), orbMaterial), radius: 2.7, speed: 0.25, phase: 0.0 },
+    { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.16, 32, 32), orbMaterial), radius: 3.5, speed: 0.18, phase: 2.1 },
+    { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), orbMaterial), radius: 4.3, speed: -0.22, phase: 4.2 },
+  ];
+  orbs.forEach((o) => world.add(o.mesh));
+
   world.position.y = -0.35;
 
   /* --- sizing --- */
@@ -174,6 +207,7 @@ const finePointer = window.matchMedia('(pointer: fine)').matches;
   function renderFrame(now) {
     const dt = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
+    const t = now / 1000;
     if (autoRotate) {
       world.rotation.y += dt * 0.12;
       vault.rotation.y += dt * 0.25;
@@ -181,6 +215,11 @@ const finePointer = window.matchMedia('(pointer: fine)').matches;
     core.rotation.x += dt * 0.6;
     core.rotation.y += dt * 0.8;
     particles.rotation.y += dt * 0.015;
+    halo.rotation.z += dt * 0.3;
+    orbs.forEach((o) => {
+      const a = t * o.speed + o.phase;
+      o.mesh.position.set(Math.cos(a) * o.radius, 1.35 + Math.sin(t * 0.7 + o.phase) * 0.35, Math.sin(a) * o.radius * 0.6);
+    });
     world.rotation.y += (targetRotY - world.rotation.y) * 0.08;
     world.rotation.x += (targetRotX - world.rotation.x) * 0.08;
     camera.position.x += (mouse.x * 0.9 - camera.position.x) * 0.04;
@@ -217,6 +256,263 @@ const finePointer = window.matchMedia('(pointer: fine)').matches;
     observer.observe(wrap);
     start();
   }
+})();
+
+/* ============ STATIC 3D CANVASES — no continuous loop ============ */
+/* Shared helper: a WebGL canvas that renders one frame on demand — on first
+   sight, while scrolling through it, on drag, or when its owner asks.
+   Never a second real-time loop; off-screen it stays put. Reduced motion:
+   one static frame, no scroll or drag response. */
+function staticCanvas(canvas, fov, camPos) {
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  } catch (err) {
+    return null;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
+  camera.position.set(camPos[0], camPos[1], camPos[2]);
+  function render() {
+    /* size from the CANVAS's own displayed size, not its parent's — the
+       parent (figure / side panel / footer block) is wider or taller than
+       the canvas, and sizing from it squashes the render. */
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+  }
+  return { scene, camera, render };
+}
+
+/* Re-render a static canvas while the page scrolls through it. Calls
+   onScroll(progress 0..1) only while the canvas is on screen. */
+function scrollDriven(canvas, onScroll) {
+  let ticking = false;
+  function update() {
+    ticking = false;
+    const rect = canvas.getBoundingClientRect();
+    const vh = window.innerHeight;
+    if (rect.bottom < 0 || rect.top > vh) return;
+    const progress = Math.min(1, Math.max(0, (vh - rect.top) / (vh + rect.height)));
+    onScroll(progress);
+  }
+  function request() {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
+  }
+  window.addEventListener('scroll', request, { passive: true });
+  window.addEventListener('resize', request);
+  return { request };
+}
+
+/* Drag-to-turn for a static canvas. Calls onDrag(dx, dy) and re-renders. */
+function dragTurn(canvas, onDrag) {
+  let dragging = false;
+  let lastX = 0, lastY = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    onDrag(e.clientX - lastX, e.clientY - lastY);
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  canvas.addEventListener('pointerup', () => { dragging = false; });
+  canvas.addEventListener('pointercancel', () => { dragging = false; });
+}
+
+/* ================= DIORAMA — scroll-driven vault (How it works) ================= */
+(function initDiorama() {
+  const canvas = document.getElementById('diorama-canvas');
+  if (!canvas) return;
+  const ctx = staticCanvas(canvas, 42, [0, 1.2, 8.5]);
+  if (!ctx) return;
+  const { scene, camera, render } = ctx;
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const key = new THREE.DirectionalLight(0xfff2cf, 1.4);
+  key.position.set(4, 6, 6);
+  scene.add(key);
+  const glow = new THREE.PointLight(0xe8b34b, 50, 30, 1.8);
+  glow.position.set(0, 1, 2);
+  scene.add(glow);
+  const rim = new THREE.PointLight(0x7fd4c1, 30, 30, 1.8);
+  rim.position.set(-3, 2, -3);
+  scene.add(rim);
+
+  const world = new THREE.Group();
+  scene.add(world);
+  const shell = new THREE.Mesh(
+    new THREE.BoxGeometry(1.7, 1.7, 1.7),
+    new THREE.MeshStandardMaterial({
+      color: 0x8a6a25, metalness: 0.7, roughness: 0.25,
+      emissive: 0xe8b34b, emissiveIntensity: 0.5, transparent: true, opacity: 0.62,
+    })
+  );
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.7, 1.7, 1.7)),
+    new THREE.LineBasicMaterial({ color: 0xf6c95e })
+  );
+  const core = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.6),
+    new THREE.MeshStandardMaterial({ color: 0xf6c95e, metalness: 0.9, roughness: 0.15, emissive: 0xe8b34b, emissiveIntensity: 0.9 })
+  );
+  world.add(shell, edges, core);
+  /* three control rings: limits (gold), session keys (teal), receipts (bone) */
+  const rings = [
+    { color: 0xe8b34b, radius: 1.9, tilt: 0.5, spin: 0.12 },
+    { color: 0x7fd4c1, radius: 2.35, tilt: -0.4, spin: -0.09 },
+    { color: 0xf2ede1, radius: 2.8, tilt: 0.9, spin: 0.06 },
+  ].map((r) => {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(r.radius, 0.035, 12, 90),
+      new THREE.MeshStandardMaterial({
+        color: r.color, metalness: 0.6, roughness: 0.3,
+        transparent: true, opacity: 0.7, emissive: r.color, emissiveIntensity: 0.25,
+      })
+    );
+    ring.rotation.x = r.tilt;
+    world.add(ring);
+    return { mesh: ring, spin: r.spin };
+  });
+  camera.lookAt(0, 0, 0);
+
+  let dragY = 0, dragX = 0;
+  function draw(progress) {
+    world.rotation.y = progress * Math.PI * 1.5 + dragY;
+    world.rotation.x = dragX;
+    core.rotation.y = progress * Math.PI * 2;
+    rings.forEach((r) => { r.mesh.rotation.z = progress * r.spin * 20; });
+    render();
+  }
+  render();
+  if (prefersReducedMotion) return;
+  scrollDriven(canvas, draw);
+  dragTurn(canvas, (dx, dy) => {
+    dragY += dx * 0.008;
+    dragX = Math.max(-0.5, Math.min(0.5, dragX + dy * 0.004));
+    const rect = canvas.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const progress = Math.min(1, Math.max(0, (vh - rect.top) / (vh + rect.height)));
+    draw(progress);
+  });
+})();
+
+/* ================= SHIELD — holographic verdict (Try the guard) ================= */
+(function initShield() {
+  const canvas = document.getElementById('shield-canvas');
+  const wrap = canvas ? canvas.parentElement : null;
+  if (!canvas || !wrap) return;
+  const ctx = staticCanvas(canvas, 42, [0, 0.4, 6.5]);
+  if (!ctx) return;
+  const { scene, camera, render } = ctx;
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const key = new THREE.DirectionalLight(0xfff2cf, 1.3);
+  key.position.set(3, 5, 5);
+  scene.add(key);
+
+  const group = new THREE.Group();
+  scene.add(group);
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: 0xf6c95e, metalness: 0.9, roughness: 0.15,
+    emissive: 0xe8b34b, emissiveIntensity: 0.9, transparent: true, opacity: 0.95,
+  });
+  const shellMat = new THREE.LineBasicMaterial({ color: 0xf6c95e, transparent: true, opacity: 0.9 });
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.85), coreMat);
+  const shell = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.5, 0)), shellMat);
+  group.add(core, shell);
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(1.9, 0.03, 12, 80),
+    new THREE.MeshStandardMaterial({
+      color: 0xe8b34b, metalness: 0.5, roughness: 0.3,
+      transparent: true, opacity: 0.5, emissive: 0xe8b34b, emissiveIntensity: 0.3,
+    })
+  );
+  halo.rotation.x = Math.PI / 3;
+  group.add(halo);
+  camera.lookAt(0, 0, 0);
+
+  let dragY = 0, dragX = 0;
+  function draw() {
+    group.rotation.y = dragY;
+    group.rotation.x = dragX;
+    render();
+  }
+  const STATES = {
+    idle: { core: 0xf6c95e, emissive: 0xe8b34b, shell: 0xf6c95e },
+    allow: { core: 0x8fce9b, emissive: 0x3f8f5f, shell: 0x8fce9b },
+    revert: { core: 0xe06c5a, emissive: 0x8f3f34, shell: 0xe06c5a },
+  };
+  function setState(name) {
+    const s = STATES[name] || STATES.idle;
+    coreMat.color.setHex(s.core);
+    coreMat.emissive.setHex(s.emissive);
+    shellMat.color.setHex(s.shell);
+    halo.material.color.setHex(s.core);
+    halo.material.emissive.setHex(s.emissive);
+    draw();
+    wrap.classList.remove('pulse');
+    void wrap.offsetWidth; // restart the pulse animation
+    wrap.classList.add('pulse');
+  }
+  draw();
+  if (prefersReducedMotion) {
+    window.addEventListener('guard-verdict', (e) => setState(e.detail.allowed ? 'allow' : 'revert'));
+    return;
+  }
+  dragTurn(canvas, (dx, dy) => {
+    dragY += dx * 0.008;
+    dragX = Math.max(-0.5, Math.min(0.5, dragX + dy * 0.004));
+    draw();
+  });
+  window.addEventListener('guard-verdict', (e) => setState(e.detail.allowed ? 'allow' : 'revert'));
+  window.addEventListener('guard-reset', () => setState('idle'));
+})();
+
+/* ================= KEY — gold key emblem (footer) ================= */
+(function initKey() {
+  const canvas = document.getElementById('key-canvas');
+  if (!canvas) return;
+  const ctx = staticCanvas(canvas, 40, [0, 0.6, 7]);
+  if (!ctx) return;
+  const { scene, camera, render } = ctx;
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const keyLight = new THREE.DirectionalLight(0xfff2cf, 1.5);
+  keyLight.position.set(3, 5, 4);
+  scene.add(keyLight);
+
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xf6c95e, metalness: 0.95, roughness: 0.12,
+    emissive: 0xe8b34b, emissiveIntensity: 0.35,
+  });
+  const key = new THREE.Group();
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.16, 14, 36), goldMat);
+  bow.position.x = -1.25;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 2.3, 16), goldMat);
+  shaft.rotation.z = Math.PI / 2;
+  shaft.position.x = 0.15;
+  const tooth1 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.13), goldMat);
+  tooth1.position.set(1.05, -0.28, 0);
+  const tooth2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.38, 0.13), goldMat);
+  tooth2.position.set(1.35, -0.22, 0);
+  key.add(bow, shaft, tooth1, tooth2);
+  key.rotation.z = 0.12;
+  key.rotation.x = -0.22; // tilt toward the viewer so the flat key catches light
+  key.scale.setScalar(1.3);
+  scene.add(key);
+  camera.lookAt(0, 0, 0);
+
+  function draw(progress) {
+    /* small sway only — the key must never turn edge-on to the viewer */
+    key.rotation.y = progress * 0.6 - 0.3;
+    render();
+  }
+  render();
+  if (prefersReducedMotion) return;
+  scrollDriven(canvas, draw);
 })();
 
 /* ================= SCROLL REVEAL ================= */
@@ -280,6 +576,7 @@ const finePointer = window.matchMedia('(pointer: fine)').matches;
   updateLedger();
 
   function verdict(allowed, rule, explanation) {
+    window.dispatchEvent(new CustomEvent('guard-verdict', { detail: { allowed } }));
     result.innerHTML =
       '<p><span class="guard-verdict ' + (allowed ? 'allow' : 'revert') + '">' +
       (allowed ? 'ALLOW — payment passes' : 'REVERT — payment blocked') + '</span></p>' +
@@ -339,6 +636,7 @@ const finePointer = window.matchMedia('(pointer: fine)').matches;
   resetBtn.addEventListener('click', () => {
     form.reset();
     updateLedger();
+    window.dispatchEvent(new CustomEvent('guard-reset'));
     result.innerHTML = '<p class="guard-result-empty">Run a check to see the guard’s answer.</p>';
   });
 })();
