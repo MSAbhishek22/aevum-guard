@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aevum Guard — Ledger Spine Demo</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="wordmark" href="#guard">AEVUM GUARD</a>
+  <nav aria-label="Sections">
+    <a href="#guard">Guard</a><a href="#limits">Limits</a><a href="#keys">Keys</a><a href="#pay">Pay</a><a href="#audit">Audit</a>
+  </nav>
+  <span class="badge" id="networkBadge">Aevum · 44005 · DEMO MODE</span>
+  <button id="connectBtn" type="button">Connect wallet</button>
+</header>
+<p class="demo-note" id="demoNote">Local demo — no wallet connected, no chain calls. State lives in this page only; sample receipt is labelled SAMPLE. On-chain wiring activates after the testnet deploy (see DEPLOY_CHECKLIST.md).</p>
+
+<main>
+  <!-- 1 GUARD -->
+  <section id="guard" class="hero">
+    <h1>Guarded balance</h1>
+    <div class="hero-amount" id="heroAmount">0.00 tUSD8</div>
+    <div class="rule-bar-wrap" aria-label="Today's spend versus daily cap">
+      <div class="rule-bar" id="spendBar"></div>
+    </div>
+    <p class="helper" id="spendLine">Spent today 0.00 / 0.00 tUSD8 across limited recipients</p>
+    <p class="helper" id="nextKeyLine">No active session keys</p>
+    <form id="fundForm" class="inline-form">
+      <label>Fund guard (demo) <input id="fundAmount" type="number" min="0" step="0.01" placeholder="100.00" required></label>
+      <button type="submit">Fund</button>
+      <span class="form-msg" id="fundMsg" aria-live="polite"></span>
+    </form>
+  </section>
+
+  <!-- 2 LIMITS -->
+  <section id="limits">
+    <h2>Limits</h2>
+    <form id="limitForm">
+      <label>Recipient <input id="limRecipient" placeholder="0x…" required></label>
+      <label>Per-tx <input id="limPerTx" type="number" min="0" step="0.01" required></label>
+      <label>Per-day <input id="limPerDay" type="number" min="0" step="0.01" required></label>
+      <label>Per-week <input id="limPerWeek" type="number" min="0" step="0.01" required></label>
+      <label>Category
+        <select id="limCategory"><option>contributors</option><option>groceries</option><option>agent-ops</option><option>other</option></select>
+      </label>
+      <button type="submit">Save limit</button>
+      <span class="form-msg" id="limitMsg" aria-live="polite"></span>
+    </form>
+    <div id="limitList" class="rows"><p class="empty">No limits yet — set your first cap.</p></div>
+  </section>
+
+  <!-- 3 SESSION KEYS -->
+  <section id="keys">
+    <h2>Session keys</h2>
+    <form id="keyForm">
+      <label>Key address <input id="keyAddress" placeholder="0x…" required></label>
+      <label>Scope
+        <select id="keyScope"><option>contributors</option><option>groceries</option><option>agent-ops</option><option>other</option></select>
+      </label>
+      <label>Max per-tx <input id="keyMax" type="number" min="0" step="0.01" required></label>
+      <label>Expiry (hours, max 168) <input id="keyHours" type="number" min="1" max="168" value="24" required></label>
+      <button type="submit">Grant session</button>
+      <span class="form-msg" id="keyMsg" aria-live="polite"></span>
+    </form>
+    <div id="keyList" class="rows"><p class="empty">No session keys yet.</p></div>
+  </section>
+
+  <!-- 4 PAY -->
+  <section id="pay">
+    <h2>Pay</h2>
+    <form id="payForm">
+      <label>Recipient <input id="payRecipient" placeholder="0x…" required></label>
+      <label>Amount <input id="payAmount" type="number" min="0" step="0.01" required></label>
+      <label>Category
+        <select id="payCategory"><option>contributors</option><option>groceries</option><option>agent-ops</option><option>other</option></select>
+      </label>
+      <p class="precheck" id="precheck" aria-live="polite">Set a limit first.</p>
+      <button type="submit" id="payBtn">Pay</button>
+      <button type="button" id="overspendBtn">Try to overspend</button>
+      <span class="form-msg" id="payMsg" aria-live="polite"></span>
+    </form>
+  </section>
+
+  <!-- 5 AUDIT TRAIL -->
+  <section id="audit" class="vault">
+    <h2>Audit trail — the Ledger Spine</h2>
+    <div class="audit-tools">
+      <button type="button" id="verifyBtn">Verify chain</button>
+      <button type="button" id="flatToggle">Flat ledger</button>
+      <button type="button" id="spineBack">← Older</button>
+      <button type="button" id="spineFwd">Newer →</button>
+      <span id="verifyResult" aria-live="polite"></span>
+    </div>
+    <div class="spine-scene" id="spineScene"><div class="spine" id="spine"></div></div>
+    <table class="flat-table" id="flatTable" hidden>
+      <thead><tr><th>#</th><th>Action</th><th>Actor</th><th>Recipient</th><th>Amount</th><th>Hash</th></tr></thead>
+      <tbody id="flatBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<footer>
+  <label><input type="checkbox" id="motionToggle"> Low-motion mode</label>
+  <span>· Aevum testnet 44005 · tUSD8 0x4565…3483 · Testnet only, no real value</span>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

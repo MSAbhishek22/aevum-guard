@@ -1,0 +1,51 @@
+/* Aevum Guard — Ledger Spine (DESIGN_CONSTITUTION.md): bone paper, ink rules,
+   vault green / alarm red / amber / rule blue. No shadows, no glass, ruled lines. */
+:root{
+  --paper:#F4F1EA; --ink:#141412; --green:#0E6B3A; --red:#B3261E;
+  --amber:#9A6A00; --blue:#1D4ED8; --muted:#6B6B66;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:Inter,system-ui,sans-serif;font-size:16px;line-height:1.55}
+h1,h2{font-family:Archivo,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.04em}
+.mono,.receipt-hash{font-family:ui-monospace,"SF Mono","Cascadia Code",monospace}
+.topbar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  border-bottom:2px solid var(--ink);padding:12px 20px;position:sticky;top:0;background:var(--paper);z-index:5}
+.wordmark{font-weight:800;color:var(--ink);text-decoration:none;letter-spacing:.08em}
+nav a{color:var(--ink);margin-right:12px;text-transform:uppercase;font-size:12px;letter-spacing:.08em}
+.badge{border:1px solid var(--amber);color:var(--amber);padding:2px 8px;font-size:12px;text-transform:uppercase}
+button{background:var(--paper);border:1px solid var(--ink);color:var(--ink);
+  text-transform:uppercase;font-size:12px;letter-spacing:.06em;padding:8px 14px;cursor:pointer}
+button[type=submit],#payBtn{background:var(--ink);color:var(--paper)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.demo-note{margin:0;padding:8px 20px;background:#141412;color:var(--paper);font-size:13px}
+main{max-width:1120px;margin:0 auto;padding:0 20px}
+section{padding:48px 0;border-bottom:1px solid var(--ink)}
+.hero-amount{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.rule-bar-wrap{height:10px;border:1px solid var(--ink);margin:16px 0 8px}
+.rule-bar{height:100%;background:var(--green);width:0%;transition:width .3s}
+.rule-bar.over{background:var(--red)}
+.helper{color:var(--muted);font-size:14px}
+form{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:16px 0}
+label{display:flex;flex-direction:column;font-size:12px;text-transform:uppercase;letter-spacing:.06em;gap:4px}
+input,select{border:1px solid var(--ink);background:#fff;padding:8px;font-size:15px;text-transform:none;letter-spacing:0}
+.form-msg{font-size:14px}.form-msg.err{color:var(--red)}.form-msg.ok{color:var(--green)}
+.rows .row{border-top:1px solid var(--ink);padding:10px 0;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.row .tag{border:1px solid var(--blue);color:var(--blue);font-size:12px;padding:1px 6px}
+.row.paused{opacity:.55}.row.revoked{text-decoration:line-through}
+.danger{border-color:var(--red);color:var(--red)}
+.precheck{width:100%;font-size:14px}.precheck.ok{color:var(--green)}.precheck.err{color:var(--red)}
+.vault{background:var(--ink);color:var(--paper);margin:0 -20px;padding:48px 20px}
+.vault button{background:var(--ink);color:var(--paper);border-color:var(--paper)}
+.spine-scene{perspective:900px;overflow:hidden;padding:24px 0}
+.spine{display:flex;flex-direction:column;gap:14px;transform-style:preserve-3d}
+.receipt{background:var(--paper);color:var(--ink);border:1px solid var(--ink);padding:14px 16px;max-width:640px}
+.receipt small{color:var(--muted)}
+.receipt-hash{color:var(--blue);font-size:13px;word-break:break-all}
+.flat-table{width:100%;border-collapse:collapse;background:var(--paper);color:var(--ink)}
+.flat-table th,.flat-table td{border:1px solid var(--ink);padding:6px 8px;font-size:13px;text-align:left}
+footer{padding:20px;font-size:13px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+footer label{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px}
+.low-motion *{transition:none!important;animation:none!important}
+@media (max-width:640px){.hero-amount{font-size:40px}section{padding:32px 0}}
