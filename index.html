@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aevum Guard — Guarded stablecoin payments on the Aevum testnet</title>
+<meta name="description" content="Aevum Guard puts three on-chain controls between the owner and the money: spending limits, scoped session keys, and a hash-chained audit trail. A payment only happens if a rule the owner wrote allows it.">
+<link rel="stylesheet" href="assets/css/style.css">
+<script type="importmap">
+{ "imports": { "three": "./assets/vendor/three.module.js" } }
+</script>
+</head>
+<body>
+<a class="skip-link" href="#how">Skip to how the guard works</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top" aria-label="Aevum Guard — back to top">
+      <span class="brand-mark" aria-hidden="true">◆</span>
+      <span class="brand-name">Aevum&nbsp;Guard</span>
+    </a>
+    <nav class="site-nav" aria-label="Page sections">
+      <a href="#problem">The problem</a>
+      <a href="#how">How it works</a>
+      <a href="#guard-check">Try the guard</a>
+      <a href="#contract">Contract</a>
+      <a href="#testnet">Testnet</a>
+    </nav>
+    <a class="btn btn-ghost" href="https://github.com/MSAbhishek22/aevum-guard">View the repo</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ============ HERO ============ -->
+  <section class="hero" aria-label="Aevum Guard">
+    <div class="hero-canvas-wrap">
+      <canvas id="hero-canvas" aria-label="Three-dimensional chain of glowing receipt blocks, turning slowly"></canvas>
+      <p class="hero-caption" id="hero-caption">Seven receipt blocks, each chained to the one before it. Drag to turn the chain.</p>
+      <noscript><p class="hero-caption">The 3D chain needs JavaScript. The rest of this page still works.</p></noscript>
+    </div>
+    <div class="wrap hero-copy">
+      <p class="eyebrow">QDay Aevum testnet · Chain 44005 · Built for the Aevum Builder Challenge #1</p>
+      <h1 class="hero-title">
+        <span class="line">A payment only happens</span>
+        <span class="line">if a rule <em>you</em> wrote</span>
+        <span class="line">allows it.</span>
+      </h1>
+      <p class="lede">Aevum Guard is a guarded stablecoin wallet. The owner sets spending limits, hands out session keys that expire and can be taken back in an instant, and every action leaves a receipt in a hash-chained audit trail a third party can verify.</p>
+      <div class="hero-actions">
+        <a class="btn btn-gold" href="ui/index.html">Open the guard demo</a>
+        <a class="btn btn-glass" href="https://github.com/MSAbhishek22/aevum-guard">Read the code on GitHub</a>
+      </div>
+      <ul class="hero-facts" aria-label="Key facts">
+        <li><strong>24/24</strong><span>contract tests pass (Hardhat, 17 Nov 2026)</span></li>
+        <li><strong>0</strong><span>external imports — Solidity ^0.8.24, one contract</span></li>
+        <li><strong>1 call</strong><span>to verify the whole chain: <code>verifyChain</code></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ PROBLEM ============ -->
+  <section class="section" id="problem" aria-labelledby="problem-heading">
+    <div class="wrap">
+      <p class="eyebrow">The problem</p>
+      <h2 id="problem-heading" class="reveal">Stablecoin payments are easy to send — and hard to control.</h2>
+      <p class="section-lede reveal">Whoever holds the key can drain the wallet. An agent with a key can spend without limit. And after the fact, there is no receipt a third party can check. Aevum Guard puts three controls between the owner and the money.</p>
+      <div class="card-grid">
+        <article class="glass-card tilt reveal">
+          <p class="card-num" aria-hidden="true">01</p>
+          <h3>One key, no limit</h3>
+          <p>A wallet key is all-or-nothing. Hand it to a helper or an agent and you have handed over everything, with no way to say “only this much, only for this”.</p>
+        </article>
+        <article class="glass-card tilt reveal">
+          <p class="card-num" aria-hidden="true">02</p>
+          <h3>Agents spend without a ceiling</h3>
+          <p>An AI agent that can pay needs a key to pay with. Without caps, a wrong turn or a bad instruction can spend far past what the owner meant.</p>
+        </article>
+        <article class="glass-card tilt reveal">
+          <p class="card-num" aria-hidden="true">03</p>
+          <h3>No proof after the fact</h3>
+          <p>A transfer on its own says money moved. It does not say who allowed it, under which rule, or whether the rule was followed. That proof has to be built in.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section section-dark" id="how" aria-labelledby="how-heading">
+    <div class="wrap">
+      <p class="eyebrow">How the guard works</p>
+      <h2 id="how-heading" class="reveal">Three controls. One rule: default-deny.</h2>
+      <p class="section-lede reveal">No limit means no payment. No live session means no delegated payment. Expired or revoked means the payment reverts. The owner writes the rules; the contract enforces them.</p>
+      <div class="steps">
+        <article class="step glass-card reveal">
+          <p class="step-kicker">Control one</p>
+          <h3>Spending limits</h3>
+          <p>Per recipient, the owner sets three caps: per transaction, per day, per week — with per-tx ≤ per-day ≤ per-week enforced. Set all three to zero and that recipient is paused. Remove the limit and payments to them revert.</p>
+          <p class="step-code"><code>setLimit</code> · <code>removeLimit</code></p>
+        </article>
+        <article class="step glass-card reveal">
+          <p class="step-kicker">Control two</p>
+          <h3>Scoped session keys</h3>
+          <p>A session key is a separate address with a narrow job: one category, one per-transaction cap, one expiry — at most seven days. The owner can revoke it in an instant, in the same block. A key can never raise its own cap.</p>
+          <p class="step-code"><code>grantSession</code> · <code>revokeSession</code></p>
+        </article>
+        <article class="step glass-card reveal">
+          <p class="step-kicker">Control three</p>
+          <h3>Hash-chained receipts</h3>
+          <p>Every action — fund, limit, session, payment, withdrawal — appends a receipt. Each receipt hashes the one before it, so changing one breaks the chain. Anyone can re-check the whole chain with a single call.</p>
+          <p class="step-code"><code>verifyChain</code> → <code>(ok, failedIndex)</code></p>
+        </article>
+      </div>
+      <div class="pay-flow reveal" aria-label="What pay() checks, in order">
+        <h3>What <code>pay()</code> checks, in order</h3>
+        <ol class="flow-list">
+          <li><span class="flow-check">Caller is the owner, or a live session key</span><span class="flow-revert">else <code>NotOwnerOrSession</code> · <code>SessionRevoked</code> · <code>SessionExpired</code> · <code>ScopeMismatch</code></span></li>
+          <li><span class="flow-check">Recipient has an active limit</span><span class="flow-revert">else <code>NoActiveLimit</code></span></li>
+          <li><span class="flow-check">Amount within the per-transaction cap</span><span class="flow-revert">else <code>OverPerTxCap</code></span></li>
+          <li><span class="flow-check">Amount within the daily cap</span><span class="flow-revert">else <code>OverDailyCap</code></span></li>
+          <li><span class="flow-check">Amount within the weekly cap</span><span class="flow-revert">else <code>OverWeeklyCap</code></span></li>
+          <li><span class="flow-check">Guard holds enough to pay</span><span class="flow-revert">else <code>InsufficientGuardBalance</code></span></li>
+        </ol>
+        <p class="flow-note">Zero amounts revert with <code>ZeroAmount</code>. Each failed check names the exact rule it broke — the error is the explanation.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRY THE GUARD ============ -->
+  <section class="section" id="guard-check" aria-labelledby="guard-heading">
+    <div class="wrap">
+      <p class="eyebrow">Try the guard</p>
+      <h2 id="guard-heading" class="reveal">Would this payment pass?</h2>
+      <p class="section-lede reveal">A local demo of the same checks <code>pay()</code> runs on-chain. Pick a payer, a recipient and an amount — the guard answers with the exact rule name. No chain calls are made here; the real check runs in the contract.</p>
+      <div class="guard-panel glass-card reveal">
+        <form id="guard-form" novalidate>
+          <div class="field">
+            <label for="payer">Paying as</label>
+            <select id="payer" name="payer">
+              <option value="owner">Owner — full control</option>
+              <option value="live">Session key — live, scope “supplies”</option>
+              <option value="expired">Session key — expired</option>
+              <option value="revoked">Session key — revoked</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="recipient">Recipient</label>
+            <select id="recipient" name="recipient">
+              <option value="supplier">Supplier — per-tx 500 · per-day 1,000 · per-week 2,500</option>
+              <option value="agent">Agent wallet — per-tx 100 · per-day 300 · per-week 1,000</option>
+              <option value="treasurer">Treasurer — per-tx 2,000 · per-day 5,000 · per-week 10,000</option>
+              <option value="stranger">Unknown address — no limit set</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+              <option value="supplies">supplies</option>
+              <option value="travel">travel</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="amount">Amount (tUSD8)</label>
+            <input id="amount" name="amount" type="number" min="0" step="1" value="120" inputmode="decimal">
+          </div>
+          <div class="field field-wide">
+            <p class="demo-ledger" id="demo-ledger">Already spent by this recipient — today: <strong>400</strong> · this week: <strong>1,100</strong> tUSD8. Demo figures, set for this page only.</p>
+          </div>
+          <div class="guard-actions">
+            <button class="btn btn-gold" type="submit">Run the guard check</button>
+            <button class="btn btn-ghost" type="button" id="guard-reset">Reset</button>
+          </div>
+        </form>
+        <div class="guard-result" id="guard-result" role="status" aria-live="polite">
+          <p class="guard-result-empty">Run a check to see the guard’s answer.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTRACT ============ -->
+  <section class="section section-dark" id="contract" aria-labelledby="contract-heading">
+    <div class="wrap">
+      <p class="eyebrow">The contract</p>
+      <h2 id="contract-heading" class="reveal">One contract. No external imports.</h2>
+      <p class="section-lede reveal"><code>contracts/AevumGuard.sol</code> — Solidity ^0.8.24. The Ownable, ReentrancyGuard and SafeERC20 behaviour is written inline, with the same revert names. Every state-changing function emits an audit event.</p>
+      <div class="table-wrap reveal">
+        <table class="fn-table">
+          <thead>
+            <tr><th scope="col">Function</th><th scope="col">Who</th><th scope="col">What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>fund(amount)</code></td><td>owner</td><td>Move tUSD8 into the guard (approve first).</td></tr>
+            <tr><td><code>setLimit(recipient, perTx, perDay, perWeek, category)</code></td><td>owner</td><td>Set a recipient’s caps; perTx ≤ perDay ≤ perWeek; all-zero pauses.</td></tr>
+            <tr><td><code>removeLimit(recipient)</code></td><td>owner</td><td>Deactivate a limit — payments to them then revert (default-deny).</td></tr>
+            <tr><td><code>grantSession(key, scope, maxPerTx, expiresInSeconds)</code></td><td>owner</td><td>Register a scoped key, max 7-day expiry.</td></tr>
+            <tr><td><code>revokeSession(key)</code></td><td>owner</td><td>Instant revoke, effective in the same block.</td></tr>
+            <tr><td><code>pay(recipient, amount, category)</code></td><td>owner or live session key</td><td>The guarded payment — runs every check above, then transfers and appends a receipt.</td></tr>
+            <tr><td><code>withdraw(amount, to)</code></td><td>owner</td><td>Emergency withdrawal.</td></tr>
+            <tr><td><code>verifyChain(receiptHashes)</code></td><td>anyone</td><td>Recompute the hash chain → <code>(ok, failedIndex)</code>.</td></tr>
+            <tr><td><code>getLimit / getSession / getSpent / receiptHash(nonce)</code></td><td>anyone</td><td>Read helpers for the UI and the audit trail.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-note reveal">Events, one per action: <code>Funded</code>, <code>LimitSet</code>, <code>LimitRemoved</code>, <code>SessionGranted</code>, <code>SessionKeyRevoked</code>, <code>Payment</code>, <code>Withdrawn</code>. One honest note from the build: the spec named both an error and an event <code>SessionRevoked</code>; Solidity forbids sharing one identifier, so the event is <code>SessionKeyRevoked</code> while the revert error keeps the spec name <code>SessionRevoked</code>.</p>
+      <div class="test-strip reveal">
+        <p><strong>Tests: 24/24 pass.</strong> Hardhat, local run, 17 Nov 2026 — caps and window rollover, session scope, expiry and revoke, owner-only guards, chain verify with tamper detection, a reentrancy attempt through a malicious token mock, and zero-amount rejection.</p>
+        <p>What is not in v1: multi-sig owners, ERC-8004 attestations, fiat ramps, recurring payments, cross-chain, upgrade proxies. Simplicity is the point — it keeps the contract auditable.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TESTNET ============ -->
+  <section class="section" id="testnet" aria-labelledby="testnet-heading">
+    <div class="wrap">
+      <p class="eyebrow">Testnet — plain facts</p>
+      <h2 id="testnet-heading" class="reveal">Test tokens. No real value. Contract not deployed yet.</h2>
+      <p class="section-lede reveal">Aevum Guard runs on the QDay Aevum testnet only. There is no mainnet code path. The contract is written and tested; deployment is waiting on the deploy step, not on the code.</p>
+      <dl class="fact-list reveal">
+        <div><dt>Chain</dt><dd>Aevum testnet · <strong>44005</strong></dd></div>
+        <div><dt>RPC</dt><dd><code>https://rpc-test.qday.info</code> <button class="copy-btn" type="button" data-copy="https://rpc-test.qday.info">Copy</button></dd></div>
+        <div><dt>Explorer</dt><dd><a href="https://explorer-test.qday.info">explorer-test.qday.info</a></dd></div>
+        <div><dt>Token</dt><dd>tUSD8 · <code>0x456569838f1d43009A91ebA4263147Afd7233483</code> <button class="copy-btn" type="button" data-copy="0x456569838f1d43009A91ebA4263147Afd7233483">Copy</button></dd></div>
+        <div><dt>Faucet</dt><dd><a href="https://faucet.qday.info">faucet.qday.info</a></dd></div>
+        <div><dt>Contract address</dt><dd><strong>Not deployed yet.</strong></dd></div>
+      </dl>
+      <div class="link-row reveal">
+        <a class="btn btn-gold" href="ui/index.html">Open the guard demo</a>
+        <a class="btn btn-glass" href="https://github.com/MSAbhishek22/aevum-guard">Repo — github.com/MSAbhishek22/aevum-guard</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p><strong>Aevum Guard</strong> — built solo by <strong>M S Abhishek</strong> for the Aevum Builder Challenge #1 (DoraHacks, $1,500 USDT; submissions close 11 Dec 2026, 13:30 IST). MIT licence.</p>
+    <p class="footer-note">Testnet only. tUSD8 has no real value. Nothing on this page is financial advice, and nothing here moves real money.</p>
+    <p><a href="https://github.com/MSAbhishek22/aevum-guard">GitHub</a> · <a href="ui/index.html">Guard demo</a> · <a href="https://explorer-test.qday.info">Aevum testnet explorer</a></p>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
